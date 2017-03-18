@@ -15,7 +15,6 @@ int onebyte_release(struct inode *inode, struct file *filep);
 ssize_t onebyte_read(struct file *filep, char *buf, size_t count, loff_t *f_pos);
 ssize_t onebyte_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos);
 static void onebyte_exit(void);
-int read_onebyte = 0;
 
 /* definition of file_operation structure */
 struct file_operations onebyte_fops = {
@@ -49,15 +48,11 @@ ssize_t onebyte_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
 
 ssize_t onebyte_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos)
 {
-      if (count && read_onebyte == 0) {
+      if (count) {
           copy_from_user(onebyte_data, buf, 1);
-          read_onebyte = 1;
-          printk(KERN_ALERT "count %d", count);
-      } else {
-          printk(KERN_ALERT "count %d", count);
-          if (count == 1) {
-              read_onebyte=0;
-          }
+      }
+      if (count>1) {
+          return -ENOSPC;
       }
       return 1;
 }
