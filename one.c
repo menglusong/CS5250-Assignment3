@@ -16,6 +16,8 @@ int onebyte_release(struct inode *inode, struct file *filep);
 ssize_t onebyte_read(struct file *filep, char *buf, size_t count, loff_t *f_pos);
 ssize_t onebyte_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos);
 static void onebyte_exit(void);
+int read_count=0;
+int write_count=0;
 
 /* definition of file_operation structure */
 struct file_operations onebyte_fops = {
@@ -53,7 +55,8 @@ ssize_t onebyte_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
         return 0;
     }
     bytes_read = bytes_to_read - copy_to_user(buf, four_MB_data + *f_pos, bytes_to_read);
-    printk(KERN_INFO "%d Byte(s) has been read \n", bytes_read);
+    read_count += bytes_read;
+    printk(KERN_INFO "%d Byte(s) has been read \n", read_count);
     *f_pos += bytes_read;
     return bytes_read;
 }
@@ -71,7 +74,8 @@ ssize_t onebyte_write(struct file *filep, const char *buf, size_t count, loff_t 
 
       if (count && bytes_to_write) {
           bytes_writen = bytes_to_write - copy_from_user(four_MB_data + *f_pos, buf, bytes_to_write);
-          printk(KERN_INFO "%d has been written to device\n", bytes_writen);
+          write_count += bytes_writen;
+          printk(KERN_INFO "%d Byte(s) has been written to device\n", write_count);
           *f_pos += bytes_writen;
           printk(KERN_INFO "Done writing to device\n");
           return bytes_writen;
