@@ -8,15 +8,17 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #define MAJOR_NUMBER 62
-#define DEVICE_SIZE 40
+#define DEVICE_SIZE 4000000
  
 /* forward declaration */
 int lcd_open(struct inode *inode, struct file *filep);
 int lcd_release(struct inode *inode, struct file *filep);
 ssize_t lcd_read(struct file *filep, char *buf, size_t count, loff_t *f_pos);
 ssize_t lcd_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos);
+loff_t lcd_lseek(struct file *filep, loff_t off, int whence);
 static void lcd_exit(void);
 int read_count=0;
+int write_count=0;
 
 /* definition of file_operation structure */
 struct file_operations lcd_fops = {
@@ -57,7 +59,11 @@ ssize_t lcd_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
     bytes_read = bytes_to_read - copy_to_user(buf, four_MB_data + *f_pos, bytes_to_read);
     read_count += bytes_read;
     printk(KERN_INFO "%d Byte(s) has been read \n", read_count);
+    //printk(KERN_INFO "bytes_to_read %d \n", bytes_to_read);
+    //printk(KERN_INFO "f_pos before + bytes_read %d \n", *f_pos);
     *f_pos += bytes_read;
+    read_count = 0;
+    //printk(KERN_INFO "f_pos %d \n", *f_pos);
     return bytes_read;
 }
 
@@ -74,15 +80,41 @@ ssize_t lcd_write(struct file *filep, const char *buf, size_t count, loff_t *f_p
 
       if (count && bytes_to_write) {
           bytes_writen = bytes_to_write - copy_from_user(four_MB_data + *f_pos, buf, bytes_to_write);
-          printk(KERN_INFO "%d has been written to device\n", bytes_writen);
+          write_count += bytes_to_write;
+          printk(KERN_INFO "%d Byte(s) has been written to device\n", write_count);
           *f_pos += bytes_writen;
           printk(KERN_INFO "Done writing to device\n");
           return bytes_writen;
+      } else {
+          write_count = 0;
       }
 
       if (count > DEVICE_SIZE) {
           return -ENOSPC;
       }
+}
+
+loff_t lcd_lseek(struct file *filep, loff_t off, int whence) {
+      loff_t new_pos = 0;
+      printk(KERN_INFO "lcd device : lseek function in work\n");
+      switch(whence) {
+          case 0 : /*seek set*/
+              new_pos = off;
+              break;
+          case 1 : /*seek cur*/
+              new_pos = filep->f_pos + off;
+              break;
+          case 2 : /*seek end*/
+              new_pos = DEVICE_SIZE - off;
+              break;
+      }
+      if(new_pos > DEVICE_SIZE)
+          new_pos = DEVICE_SIZE;
+      if(new_pos < 0)
+          new_pos = 0;
+      filep->f_pos = new_pos;
+      printk(KERN_INFO "new_pos is %d\n", new_pos);
+      return new_pos;
 }
 
 static int lcd_init(void)
@@ -106,7 +138,7 @@ static int lcd_init(void)
      }
      // initialize the value to be X
      *four_MB_data = 'X';
-     printk(KERN_ALERT "This is a 4 MB device module\n");
+     printk(KERN_ALERT "This is a LCD device module\n");
      return 0;
 }
 
@@ -120,7 +152,7 @@ static void lcd_exit(void)
      }
      // unregister the device
      unregister_chrdev(MAJOR_NUMBER, "lcd");
-     printk(KERN_ALERT "4 MB device module is unloaded\n");
+     printk(KERN_ALERT "LCD device module is unloaded\n");
 }
 
 MODULE_LICENSE("GPL");
