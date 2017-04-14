@@ -19,6 +19,7 @@ loff_t lcd_lseek(struct file *filep, loff_t off, int whence);
 static void lcd_exit(void);
 int read_count=0;
 int write_count=0;
+int dev_msg_size=0;
 
 /* definition of file_operation structure */
 struct file_operations lcd_fops = {
@@ -53,6 +54,7 @@ ssize_t lcd_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
         bytes_to_read = maxbytes;
 
     if (bytes_to_read == 0) {
+        read_count = 0;
         printk(KERN_INFO "Reached the end of the device\n");
         return 0;
     }
@@ -62,7 +64,7 @@ ssize_t lcd_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
     //printk(KERN_INFO "bytes_to_read %d \n", bytes_to_read);
     //printk(KERN_INFO "f_pos before + bytes_read %d \n", *f_pos);
     *f_pos += bytes_read;
-    read_count = 0;
+    //read_count = 0;
     //printk(KERN_INFO "f_pos %d \n", *f_pos);
     return bytes_read;
 }
@@ -78,15 +80,16 @@ ssize_t lcd_write(struct file *filep, const char *buf, size_t count, loff_t *f_p
       else
           bytes_to_write = maxbytes;
 
+      if (*f_pos ==0) {
+          write_count = 0;
+      }
       if (count && bytes_to_write) {
           bytes_writen = bytes_to_write - copy_from_user(four_MB_data + *f_pos, buf, bytes_to_write);
           write_count += bytes_to_write;
-          printk(KERN_INFO "%d Byte(s) has been written to device\n", write_count);
+          printk(KERN_INFO "%d Byte(s) has been written to device\n", bytes_to_write);
           *f_pos += bytes_writen;
           printk(KERN_INFO "Done writing to device\n");
           return bytes_writen;
-      } else {
-          write_count = 0;
       }
 
       if (count > DEVICE_SIZE) {
@@ -97,6 +100,7 @@ ssize_t lcd_write(struct file *filep, const char *buf, size_t count, loff_t *f_p
 loff_t lcd_lseek(struct file *filep, loff_t off, int whence) {
       loff_t new_pos = 0;
       printk(KERN_INFO "lcd device : lseek function in work\n");
+      dev_msg_size = strlen(four_MB_data);
       switch(whence) {
           case 0 : /*seek set*/
               new_pos = off;
@@ -105,11 +109,13 @@ loff_t lcd_lseek(struct file *filep, loff_t off, int whence) {
               new_pos = filep->f_pos + off;
               break;
           case 2 : /*seek end*/
-              new_pos = DEVICE_SIZE - off;
+              printk(KERN_INFO "dev_msg_size %d\n", dev_msg_size);
+              printk(KERN_INFO "off %d\n", off);
+              new_pos = dev_msg_size - off;
               break;
       }
-      if(new_pos > DEVICE_SIZE)
-          new_pos = DEVICE_SIZE;
+      //if (new_pos > dev_msg_size)
+        //  new_pos = dev_msg_size;
       if(new_pos < 0)
           new_pos = 0;
       filep->f_pos = new_pos;
