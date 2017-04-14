@@ -71,6 +71,9 @@ ssize_t onebyte_write(struct file *filep, const char *buf, size_t count, loff_t 
           bytes_to_write = count;
       else
           bytes_to_write = maxbytes;
+      if (*f_pos ==0) {
+          write_count = 0;
+      }
 
       if (count && bytes_to_write) {
           bytes_writen = bytes_to_write - copy_from_user(four_MB_data + *f_pos, buf, bytes_to_write);
